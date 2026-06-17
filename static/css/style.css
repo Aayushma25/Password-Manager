@@ -1,0 +1,310 @@
+/* =========================================================
+   VaultGen — Design System
+   Palette: near-black surface · electric violet accent · 
+   green-tinted text. Security tool aesthetic: precise, 
+   minimal, trust-signalling.
+   ========================================================= */
+
+:root {
+  --vg-bg:         #0d0f14;
+  --vg-surface:    #13161e;
+  --vg-surface-2:  #1b1f2b;
+  --vg-border:     rgba(255,255,255,0.07);
+  --vg-accent:     #7c5cfc;
+  --vg-accent-dim: rgba(124,92,252,0.15);
+  --vg-green:      #22c55e;
+  --vg-red:        #ef4444;
+  --vg-amber:      #f59e0b;
+  --vg-text:       #e2e8f0;
+  --vg-muted:      #64748b;
+  --vg-radius:     10px;
+}
+
+/* ---- Base ---- */
+body {
+  background: var(--vg-bg);
+  color: var(--vg-text);
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* ---- Navbar ---- */
+.vg-navbar {
+  background: var(--vg-surface);
+  border-bottom: 1px solid var(--vg-border);
+  height: 56px;
+}
+.text-accent { color: var(--vg-accent) !important; }
+
+/* ---- Tab Pills ---- */
+.vg-tabs .nav-link {
+  color: var(--vg-muted);
+  border-radius: var(--vg-radius);
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+  transition: all 0.15s;
+}
+.vg-tabs .nav-link:hover {
+  color: var(--vg-text);
+  background: var(--vg-surface);
+}
+.vg-tabs .nav-link.active {
+  background: var(--vg-accent-dim);
+  color: var(--vg-accent);
+  border: 1px solid rgba(124,92,252,0.3);
+}
+.bg-accent { background: var(--vg-accent) !important; }
+
+/* ---- Cards ---- */
+.vg-card {
+  background: var(--vg-surface);
+  border: 1px solid var(--vg-border);
+  border-radius: var(--vg-radius);
+  padding: 1.5rem;
+}
+.vg-card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vg-muted);
+  margin-bottom: 1.25rem;
+}
+
+/* ---- Inputs ---- */
+.vg-input {
+  background: var(--vg-surface-2);
+  border: 1px solid var(--vg-border);
+  color: var(--vg-text);
+  border-radius: 8px;
+  transition: border-color 0.15s;
+}
+.vg-input:focus {
+  background: var(--vg-surface-2);
+  color: var(--vg-text);
+  border-color: var(--vg-accent);
+  box-shadow: 0 0 0 3px rgba(124,92,252,0.15);
+}
+.vg-input::placeholder { color: var(--vg-muted); }
+
+/* ---- Checkboxes ---- */
+.vg-check .form-check-input {
+  background-color: var(--vg-surface-2);
+  border-color: rgba(255,255,255,0.2);
+}
+.vg-check .form-check-input:checked {
+  background-color: var(--vg-accent);
+  border-color: var(--vg-accent);
+}
+.vg-check .form-check-label {
+  font-size: 0.85rem;
+  color: var(--vg-text);
+}
+
+/* ---- Accent Button ---- */
+.btn-accent {
+  background: var(--vg-accent);
+  border-color: var(--vg-accent);
+  color: #fff;
+  font-weight: 500;
+}
+.btn-accent:hover {
+  background: #6b4de6;
+  border-color: #6b4de6;
+  color: #fff;
+}
+.btn-outline-accent {
+  border-color: var(--vg-accent);
+  color: var(--vg-accent);
+}
+.btn-outline-accent.active,
+.btn-check:checked + .btn-outline-accent {
+  background: var(--vg-accent) !important;
+  color: #fff !important;
+}
+
+/* ---- Password Display ---- */
+.vg-password-display {
+  background: var(--vg-surface-2);
+  border: 1px solid var(--vg-border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  word-break: break-all;
+  min-height: 60px;
+  color: var(--vg-green);
+  flex: 1;
+  transition: color 0.2s;
+}
+
+.vg-entropy-badge {
+  background: rgba(34,197,94,0.12);
+  color: var(--vg-green);
+  border: 1px solid rgba(34,197,94,0.25);
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.3rem 0.65rem;
+}
+
+/* ---- Strength Bar ---- */
+.vg-strength-bar-track {
+  height: 6px;
+  background: var(--vg-surface-2);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.vg-strength-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s ease, background 0.3s ease;
+  background: var(--vg-muted);
+}
+.vg-strength-input { font-size: 1rem; padding-right: 2.5rem; }
+
+/* ---- Stat Cards ---- */
+.vg-stat-card {
+  background: var(--vg-surface-2);
+  border: 1px solid var(--vg-border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  text-align: center;
+}
+.vg-stat-label  { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--vg-muted); margin-bottom: 0.2rem; }
+.vg-stat-value  { font-size: 1.4rem; font-weight: 700; color: var(--vg-text); line-height: 1.1; }
+.vg-stat-sub    { font-size: 0.7rem; color: var(--vg-muted); margin-top: 0.2rem; }
+
+/* ---- Info Blocks ---- */
+.vg-info-block {
+  background: var(--vg-surface-2);
+  border: 1px solid var(--vg-border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+.vg-callout-info {
+  background: rgba(14,165,233,0.08);
+  border: 1px solid rgba(14,165,233,0.2);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* ---- Vault Table ---- */
+.vg-table {
+  color: var(--vg-text);
+  font-size: 0.875rem;
+}
+.vg-table thead th {
+  color: var(--vg-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  border-color: var(--vg-border);
+  padding-bottom: 0.75rem;
+}
+.vg-table tbody tr {
+  border-color: var(--vg-border);
+  transition: background 0.1s;
+}
+.vg-table tbody tr:hover { background: var(--vg-surface-2); }
+.vg-table td { border-color: var(--vg-border); vertical-align: middle; }
+
+/* ---- Divider ---- */
+.vg-divider { border-color: var(--vg-border); margin: 1rem 0; }
+
+/* ---- Breach Result ---- */
+.vg-breach-safe {
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.25);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+.vg-breach-danger {
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+/* ---- Modal ---- */
+.vg-modal {
+  background: var(--vg-surface);
+  border: 1px solid var(--vg-border);
+  color: var(--vg-text);
+}
+.vg-modal .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); }
+
+/* ---- Toast ---- */
+.vg-toast {
+  background: var(--vg-surface-2);
+  border: 1px solid var(--vg-border);
+  color: var(--vg-text);
+  min-width: 220px;
+}
+
+/* ---- Auth Pages ---- */
+.vg-auth-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--vg-bg);
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% -10%, rgba(124,92,252,0.12), transparent);
+}
+.vg-auth-wrap {
+  width: 100%;
+  max-width: 420px;
+  background: var(--vg-surface);
+  border: 1px solid var(--vg-border);
+  border-radius: 16px;
+  padding: 2.5rem;
+}
+.vg-auth-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--vg-accent-dim);
+  border: 1px solid rgba(124,92,252,0.3);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  font-size: 1.75rem;
+  color: var(--vg-accent);
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--vg-surface-2); border-radius: 3px; }
+
+/* ---- Range slider ---- */
+.form-range::-webkit-slider-thumb { background: var(--vg-accent); }
+.form-range::-moz-range-thumb { background: var(--vg-accent); }
+.form-range::-webkit-slider-runnable-track { background: var(--vg-surface-2); }
+
+/* ---- Warning items ---- */
+.vg-warning-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.35rem;
+  background: rgba(245,158,11,0.07);
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+/* ---- Strength color states ---- */
+.strength-0 { background: #ef4444; }
+.strength-1 { background: #f97316; }
+.strength-2 { background: #eab308; }
+.strength-3 { background: #22c55e; }
+.strength-4 { background: #10b981; }

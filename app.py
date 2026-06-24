@@ -188,3 +188,146 @@ def hash_master(master_password: str) -> str:
     return hashlib.sha256(key).hexdigest()
 
 
+# ===========================================================================
+# PASSWORD GENERATOR
+# ===========================================================================
+
+def calculate_entropy(password: str, charset_size: int) -> float:
+    """
+    Entropy (bits) = log2(charset_size ^ length) = length * log2(charset_size).
+    This is a theoretical maximum; zxcvbn gives a more realistic estimate.
+    """
+    if charset_size <= 1:
+        return 0.0
+    return len(password) * math.log2(charset_size)
+
+
+def generate_password(length: int, use_upper: bool, use_lower: bool,
+                       use_digits: bool, use_symbols: bool,
+                       exclude_ambiguous: bool) -> dict:
+    """
+    Generate a cryptographically secure password.
+
+    Why secrets.choice instead of random.choice?
+    - random uses a Mersenne Twister PRNG, which is NOT cryptographically
+      secure — its state can be reconstructed from ~624 outputs.
+    - secrets uses os.urandom() (hardware entropy / /dev/urandom), which
+      is suitable for generating tokens, keys, and passwords.
+    """
+    AMBIGUOUS = set("0Ol1I|`")
+
+    charset = ""
+    if use_upper:
+        pool = string.ascii_uppercase
+        if exclude_ambiguous:
+            pool = "".join(c for c in pool if c not in AMBIGUOUS)
+        charset += pool
+    if use_lower:
+        pool = string.ascii_lowercase
+        if exclude_ambiguous:
+            pool = "".join(c for c in pool if c not in AMBIGUOUS)
+        charset += pool
+    if use_digits:
+        pool = string.digits
+        if exclude_ambiguous:
+            pool = "".join(c for c in pool if c not in AMBIGUOUS)
+        charset += pool
+    if use_symbols:
+        pool = string.punctuation
+        if exclude_ambiguous:
+            pool = "".join(c for c in pool if c not in AMBIGUOUS)
+        charset += pool
+
+    if not charset:
+        charset = string.ascii_letters + string.digits  # safe fallback
+
+    # Guarantee at least one character from each requested class
+    guaranteed = []
+    if use_upper:
+        pool = "".join(c for c in string.ascii_uppercase
+                       if not exclude_ambiguous or c not in AMBIGUOUS)
+        if pool:
+            guaranteed.append(secrets.choice(pool))
+    if use_lower:
+        pool = "".join(c for c in string.ascii_lowercase
+                       if not exclude_ambiguous or c not in AMBIGUOUS)
+        if pool:
+            guaranteed.append(secrets.choice(pool))
+    if use_digits:
+        pool = "".join(c for c in string.digits
+                       if not exclude_ambiguous or c not in AMBIGUOUS)
+        if pool:
+            guaranteed.append(secrets.choice(pool))
+    if use_symbols:
+        pool = "".join(c for c in string.punctuation
+                       if not exclude_ambiguous or c not in AMBIGUOUS)
+        if pool:
+            guaranteed.append(secrets.choice(pool))
+
+    remaining = length - len(guaranteed)
+    if remaining < 0:
+        remaining = 0
+
+    # secrets.choice on each position independently; no shuffling bias
+    password_chars = guaranteed + [secrets.choice(charset) for _ in range(remaining)]
+
+    # Fisher-Yates shuffle via secrets for unbiased ordering
+    for i in range(len(password_chars) - 1, 0, -1):
+        j = secrets.randbelow(i + 1)
+        password_chars[i], password_chars[j] = password_chars[j], password_chars[i]
+
+    password = "".join(password_chars)
+    entropy = calculate_entropy(password, len(set(charset)))
+
+    return {"password": password, "entropy": round(entropy, 1)}
+
+
+def generate_passphrase(word_count: int) -> dict:
+    """
+    Generate a passphrase from the EFF large wordlist.
+    Each word is chosen with secrets.choice so selection is
+    cryptographically uniform. Entropy ≈ word_count * log2(len(wordlist)).
+    """
+    words = [secrets.choice(EFF_WORDLIST) for _ in range(word_count)]
+    passphrase = "-".join(words)
+    entropy = word_count * math.log2(len(EFF_WORDLIST))
+    return {"password": passphrase, "entropy": round(entropy, 1)}
+
+
+# ===========================================================================
+# HIBP BREACH CHECK
+# ===========================================================================
+
+def check_breach(password: str) -> dict:
+    """
+    Check HaveIBeenPwned Pwned Passwords API using k-anonymity.
+
+    Why k-anonymity (prefix method)?
+    - We hash the password with SHA-1 locally.
+    - Only the first 5 hex characters are sent to the API.
+    - The API returns all hashes matching that prefix (~500 entries).
+    - We compare the remainder locally — the full hash NEVER leaves this machine.
+    - This gives us breach data without exposing the actual password or even
+      its full hash to a third party.
+    """
+    sha1 = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+    prefix, suffix = sha1[:5], sha1[5:]
+
+    try:
+        resp = requests.get(
+            f"https://api.pwnedpasswords.com/range/{prefix}",
+            headers={"Add-Padding": "true"},
+            timeout=5,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        return {"error": str(e), "pwned": False, "count": 0}
+
+    for line in resp.text.splitlines():
+        hash_suffix, count = line.split(":")
+        if hash_suffix.strip() == suffix:
+            return {"pwned": True, "count": int(count.strip())}
+
+    return {"pwned": False, "count": 0}
+
+

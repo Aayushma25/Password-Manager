@@ -122,3 +122,69 @@ def get_db():
     conn.commit()
     return conn
 
+
+def vault_initialized():
+    """Return True if a master-password hash has been stored."""
+    if not os.path.exists(DB_PATH):
+        return False
+    db = get_db()
+    row = db.execute("SELECT value FROM meta WHERE key='master_hash'").fetchone()
+    db.close()
+    return row is not None
+
+
+# ===========================================================================
+# KEY DERIVATION & ENCRYPTION
+# ===========================================================================
+
+def load_or_create_salt():
+    """
+    Salt is stored separately from the DB so that even if the DB is copied
+    without the salt file, brute-forcing the master password is harder.
+    """
+    if os.path.exists(SALT_PATH):
+        with open(SALT_PATH, "rb") as f:
+            return f.read()
+    salt = secrets.token_bytes(32)   # 256-bit salt
+    os.makedirs(os.path.dirname(SALT_PATH), exist_ok=True)
+    with open(SALT_PATH, "wb") as f:
+        f.write(salt)
+    return salt
+
+
+def derive_key(master_password: str) -> bytes:
+    """
+    Derive a 32-byte key from the master password using PBKDF2-HMAC-SHA256.
+
+    Why PBKDF2?
+    - Intentionally slow (100,000 iterations) to resist brute-force attacks.
+    - NIST SP 800-132 and OWASP recommend ≥ 600,000 iterations for new systems;
+      100k is a reasonable minimum for local use on modest hardware.
+    - The salt ensures the same password produces a different key on every
+      installation, defeating rainbow-table attacks.
+    """
+    salt = load_or_create_salt()
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100_000,
+        backend=default_backend(),
+    )
+    return base64.urlsafe_b64encode(kdf.derive(master_password.encode("utf-8")))
+
+
+def get_fernet(master_password: str) -> Fernet:
+    """Return a Fernet instance keyed to this master password."""
+    return Fernet(derive_key(master_password))
+
+
+def hash_master(master_password: str) -> str:
+    """
+    Store a SHA-256 hash of the *derived key* (not the raw password) for
+    verification. We never store the master password itself.
+    """
+    key = derive_key(master_password)
+    return hashlib.sha256(key).hexdigest()
+
+

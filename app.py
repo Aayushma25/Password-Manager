@@ -331,3 +331,65 @@ def check_breach(password: str) -> dict:
     return {"pwned": False, "count": 0}
 
 
+# ===========================================================================
+# ROUTES — AUTH
+# ===========================================================================
+
+@app.route("/")
+def index():
+    if not vault_initialized():
+        return redirect(url_for("setup"))
+    if not session.get("unlocked"):
+        return redirect(url_for("unlock"))
+    return render_template("index.html")
+
+
+@app.route("/setup", methods=["GET", "POST"])
+def setup():
+    if vault_initialized():
+        return redirect(url_for("index"))
+    error = None
+    if request.method == "POST":
+        pw = request.form.get("master_password", "")
+        confirm = request.form.get("confirm_password", "")
+        if len(pw) < 8:
+            error = "Master password must be at least 8 characters."
+        elif pw != confirm:
+            error = "Passwords do not match."
+        else:
+            os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+            db = get_db()
+            db.execute("INSERT INTO meta (key, value) VALUES ('master_hash', ?)",
+                       (hash_master(pw),))
+            db.commit()
+            db.close()
+            session["unlocked"] = True
+            session["master_password"] = pw
+            return redirect(url_for("index"))
+    return render_template("setup.html", error=error)
+
+
+@app.route("/unlock", methods=["GET", "POST"])
+def unlock():
+    if not vault_initialized():
+        return redirect(url_for("setup"))
+    error = None
+    if request.method == "POST":
+        pw = request.form.get("master_password", "")
+        db = get_db()
+        row = db.execute("SELECT value FROM meta WHERE key='master_hash'").fetchone()
+        db.close()
+        if row and hash_master(pw) == row["value"]:
+            session["unlocked"] = True
+            session["master_password"] = pw
+            return redirect(url_for("index"))
+        error = "Incorrect master password."
+    return render_template("unlock.html", error=error)
+
+
+@app.route("/lock")
+def lock():
+    session.clear()
+    return redirect(url_for("unlock"))
+
+

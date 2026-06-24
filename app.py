@@ -393,3 +393,231 @@ def lock():
     return redirect(url_for("unlock"))
 
 
+
+# ===========================================================================
+# ROUTES — PASSWORD GENERATOR
+# ===========================================================================
+
+@app.route("/api/generate", methods=["POST"])
+def api_generate():
+    if not session.get("unlocked"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json(force=True)
+    mode = data.get("mode", "password")
+
+    if mode == "passphrase":
+        word_count = max(4, min(8, int(data.get("word_count", 5))))
+        result = generate_passphrase(word_count)
+    else:
+        length = max(8, min(128, int(data.get("length", 16))))
+        result = generate_password(
+            length=length,
+            use_upper=data.get("use_upper", True),
+            use_lower=data.get("use_lower", True),
+            use_digits=data.get("use_digits", True),
+            use_symbols=data.get("use_symbols", True),
+            exclude_ambiguous=data.get("exclude_ambiguous", False),
+        )
+    return jsonify(result)
+
+
+# ===========================================================================
+# ROUTES — STRENGTH CHECKER
+# ===========================================================================
+
+@app.route("/api/strength", methods=["POST"])
+def api_strength():
+    if not session.get("unlocked"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json(force=True)
+    password = data.get("password", "")
+
+    if ZXCVBN_SOURCE == "zxcvbn":
+        result = _zxcvbn_lib(password)
+        labels = ["Very Weak", "Weak", "Fair", "Strong", "Very Strong"]
+        ct = result.get("crack_times_display", {})
+        fb = result.get("feedback", {})
+        warnings = []
+        if fb.get("warning"):
+            warnings.append(fb["warning"])
+        warnings += fb.get("suggestions", [])
+        charset_size = 0
+        if any(c in string.ascii_lowercase for c in password): charset_size += 26
+        if any(c in string.ascii_uppercase for c in password): charset_size += 26
+        if any(c in string.digits           for c in password): charset_size += 10
+        if any(c in string.punctuation      for c in password): charset_size += 32
+        entropy = round(len(password) * math.log2(max(charset_size, 2)), 1) if password else 0
+        return jsonify({
+            "score":              result["score"],
+            "label":              labels[result["score"]],
+            "entropy":            entropy,
+            "crack_time_offline": ct.get("offline_fast_hashing_1e10_per_second", "N/A"),
+            "crack_time_online":  ct.get("online_throttling_100_per_hour", "N/A"),
+            "warnings":           warnings,
+            "guesses_log10":      round(result.get("guesses_log10", 0), 1),
+        })
+    else:
+        # Bundled fallback estimator
+        r = _bundled_strength(password)
+        labels = ["Very Weak", "Weak", "Fair", "Strong", "Very Strong"]
+        return jsonify({
+            "score":              r["score"],
+            "label":              labels[r["score"]],
+            "entropy":            r["entropy"],
+            "crack_time_offline": r["crack_time_offline"],
+            "crack_time_online":  r["crack_time_online"],
+            "warnings":           r["warnings"],
+            "guesses_log10":      r["guesses_log10"],
+        })
+
+
+# ===========================================================================
+# ROUTES — BREACH CHECKER
+# ===========================================================================
+
+@app.route("/api/breach", methods=["POST"])
+def api_breach():
+    if not session.get("unlocked"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json(force=True)
+    password = data.get("password", "")
+    if not password:
+        return jsonify({"error": "No password provided"}), 400
+
+    return jsonify(check_breach(password))
+
+
+# ===========================================================================
+# ROUTES — VAULT CRUD
+# ===========================================================================
+
+@app.route("/api/vault/save", methods=["POST"])
+def api_vault_save():
+    if not session.get("unlocked"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json(force=True)
+    master_pw = session.get("master_password", "")
+    f = get_fernet(master_pw)
+
+    # Encrypt the password before storage
+    encrypted = f.encrypt(data["password"].encode("utf-8")).decode("utf-8")
+
+    db = get_db()
+    db.execute("""
+        INSERT INTO vault (app_name, username, password_enc, date_saved,
+                           strength, breach_count, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        data.get("app_name", ""),
+        data.get("username", ""),
+        encrypted,
+        datetime.datetime.now().isoformat(timespec="seconds"),
+        data.get("strength", None),
+        data.get("breach_count", None),
+        data.get("notes", ""),
+    ))
+    db.commit()
+    db.close()
+    return jsonify({"success": True})
+
+
+@app.route("/api/vault/list", methods=["GET"])
+def api_vault_list():
+    if not session.get("unlocked"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, app_name, username, date_saved, strength, breach_count, notes "
+        "FROM vault ORDER BY date_saved DESC"
+    ).fetchall()
+    db.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/vault/get/<int:entry_id>", methods=["GET"])
+def api_vault_get(entry_id):
+    if not session.get("unlocked"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    master_pw = session.get("master_password", "")
+    f = get_fernet(master_pw)
+
+    db = get_db()
+    row = db.execute("SELECT * FROM vault WHERE id=?", (entry_id,)).fetchone()
+    db.close()
+
+    if not row:
+        return jsonify({"error": "Not found"}), 404
+
+    try:
+        decrypted = f.decrypt(row["password_enc"].encode("utf-8")).decode("utf-8")
+    except InvalidToken:
+        return jsonify({"error": "Decryption failed — wrong master password?"}), 500
+
+    result = dict(row)
+    result["password"] = decrypted
+    del result["password_enc"]
+    return jsonify(result)
+
+
+@app.route("/api/vault/delete/<int:entry_id>", methods=["DELETE"])
+def api_vault_delete(entry_id):
+    if not session.get("unlocked"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    db = get_db()
+    db.execute("DELETE FROM vault WHERE id=?", (entry_id,))
+    db.commit()
+    db.close()
+    return jsonify({"success": True})
+
+
+@app.route("/api/vault/update/<int:entry_id>", methods=["PUT"])
+def api_vault_update(entry_id):
+    if not session.get("unlocked"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json(force=True)
+    master_pw = session.get("master_password", "")
+    f = get_fernet(master_pw)
+    encrypted = f.encrypt(data["password"].encode("utf-8")).decode("utf-8")
+
+    db = get_db()
+    db.execute("""
+        UPDATE vault SET app_name=?, username=?, password_enc=?, notes=?
+        WHERE id=?
+    """, (data.get("app_name", ""), data.get("username", ""),
+          encrypted, data.get("notes", ""), entry_id))
+    db.commit()
+    db.close()
+    return jsonify({"success": True})
+
+
+@app.route("/api/vault/export", methods=["GET"])
+def api_vault_export():
+    """
+    Export vault as JSON. Passwords remain encrypted — this is a safe backup
+    because without the master password (and the salt file), the encrypted
+    blobs cannot be decrypted.
+    """
+    if not session.get("unlocked"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    db = get_db()
+    rows = db.execute("SELECT * FROM vault").fetchall()
+    db.close()
+
+    export_data = {
+        "vaultgen_export": True,
+        "exported_at": datetime.datetime.now().isoformat(),
+        "entries": [dict(r) for r in rows],
+    }
+    return jsonify(export_data)
+
+
+

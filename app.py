@@ -620,4 +620,16 @@ def api_vault_export():
     return jsonify(export_data)
 
 
+# ===========================================================================
+# ENTRY POINT
+# ===========================================================================
+
+if __name__ == "__main__":
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    host  = os.environ.get("VAULTGEN_HOST", "127.0.0.1")
+    port  = int(os.environ.get("VAULTGEN_PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    print(f"\n  VaultGen is running at http://{host}:{port}\n")
+    app.run(debug=debug, host=host, port=port)
+
 

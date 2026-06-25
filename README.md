@@ -66,3 +66,9 @@ python app.py
 Open your browser at **http://127.0.0.1:5000**
 
 ---
+## First Launch
+
+1. You will be taken to the **Create Vault** screen.
+2. Choose a strong master password (≥ 8 characters; longer is better).
+3. This password is **never stored** — only a hash of its derived key is kept for unlock verification.
+4. If you forget your master password, your vault data cannot be recovered.

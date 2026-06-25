@@ -72,3 +72,35 @@ Open your browser at **http://127.0.0.1:5000**
 2. Choose a strong master password (≥ 8 characters; longer is better).
 3. This password is **never stored** — only a hash of its derived key is kept for unlock verification.
 4. If you forget your master password, your vault data cannot be recovered.
+
+
+---
+
+## File Layout
+
+```
+vaultgen/
+├── app.py                  # Flask application + all backend logic
+├── requirements.txt
+├── .env.example
+├── README.md
+├── data/                   # Created automatically on first run
+│   ├── vault.db            # Encrypted SQLite database
+│   └── vault.salt          # 256-bit random salt (keep this file!)
+├── static/
+│   ├── css/style.css
+│   └── js/app.js
+└── templates/
+    ├── index.html
+    ├── setup.html
+    └── unlock.html
+```
+
+> ⚠️ **Back up both `vault.db` AND `vault.salt`** together.
+> The salt is required to derive the correct encryption key from your master password.
+> Without it, encrypted entries cannot be decrypted even with the correct master password.
+
+---
+
+
+

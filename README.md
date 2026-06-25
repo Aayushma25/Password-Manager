@@ -127,5 +127,23 @@ This means an attacker with only the database cannot verify guesses without also
 
 ---
 
+## Updating the PBKDF2 Iteration Count
+
+Open `app.py` and find the `derive_key` function. Increase `iterations`:
+
+```python
+kdf = PBKDF2HMAC(
+    algorithm=hashes.SHA256(),
+    length=32,
+    salt=salt,
+    iterations=600_000,   # OWASP 2023 recommendation
+    ...
+)
+```
+
+After changing this, you must **reset your vault** (delete `data/vault.db` and `data/vault.salt`) because existing entries were encrypted with a key derived at the old iteration count.
+
+---
+
 
 

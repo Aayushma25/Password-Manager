@@ -103,4 +103,29 @@ vaultgen/
 ---
 
 
+## Security Architecture
+
+### Why `secrets` instead of `random`?
+Python's `random` module uses a Mersenne Twister PRNG whose state can be reconstructed after observing ~624 outputs — entirely unsuitable for security-sensitive values. `secrets` wraps `os.urandom()` (backed by the OS CSPRNG / `/dev/urandom`), providing cryptographically uniform randomness.
+
+### Why PBKDF2-HMAC-SHA256 with 100,000 iterations?
+Password-based key derivation must be deliberately slow to resist brute-force attacks. PBKDF2 (NIST SP 800-132) applies the PRF repeatedly, making each guess expensive. 100,000 iterations is a conservative minimum; increase `iterations` in `app.py` if your hardware allows.
+
+### Why Fernet instead of raw AES?
+Fernet is a high-level authenticated encryption scheme (AES-128-CBC + HMAC-SHA256). It handles IV generation, PKCS7 padding, and MAC verification automatically — removing common implementation pitfalls like IV reuse and padding oracle vulnerabilities.
+
+### Why k-anonymity for HIBP?
+Sending the full password hash to a third-party API would expose the hash to potential interception or logging. With k-anonymity, only the first 5 hex characters of the SHA-1 hash are transmitted. The API returns ~500 matching suffixes; comparison is done locally. The full hash — let alone the password — is never sent over the network.
+
+### Master password storage
+The master password itself is never persisted. On first setup, the application:
+1. Loads (or generates) a 256-bit random salt from `data/vault.salt`
+2. Derives a 32-byte key via PBKDF2-HMAC-SHA256(master_password, salt, 100_000)
+3. Stores `SHA-256(derived_key)` in the database for unlock verification
+
+This means an attacker with only the database cannot verify guesses without also having the salt file.
+
+---
+
+
 

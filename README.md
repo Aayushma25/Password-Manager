@@ -145,5 +145,17 @@ After changing this, you must **reset your vault** (delete `data/vault.db` and `
 
 ---
 
+## Dependencies
 
+| Package | Purpose |
+|---|---|
+| Flask | Web framework |
+| cryptography | Fernet encryption, PBKDF2 key derivation |
+| zxcvbn | Realistic password strength estimation |
+| requests | HIBP Pwned Passwords API calls |
+| python-dotenv | Optional `.env` config loading |
+
+All dependencies are free and open source. No paid services required.
+
+---
 

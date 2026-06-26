@@ -1,5 +1,9 @@
 
-
+"""
+VaultGen — All-in-One Local Password Manager
+=============================================
+Security decisions documented inline throughout.
+"""
 
 
 

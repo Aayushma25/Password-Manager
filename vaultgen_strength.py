@@ -1,5 +1,18 @@
 
+"""
+vaultgen_strength.py — Bundled password strength estimator
+===========================================================
+Used as a fallback when zxcvbn-python is not installed.
+Not as accurate as zxcvbn for real-world crack estimates, but
+covers the most important signal categories:
+  - Character-class entropy
+  - Common passwords / dictionary words
+  - Repeated characters
+  - Keyboard walks
+  - Sequential digits/letters
+  - Short length penalty
 
+"""
 import re
 import math
 import string
